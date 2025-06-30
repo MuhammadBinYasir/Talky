@@ -48,7 +48,7 @@ Talky was built to offer a smooth, secure, and modern chatting experience where 
 3. **Setup Environment Variables For Client**
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=.O8SoPANSRqv10lIhf5ZU4gi77f5IL5Unk5VEcJN5xbc
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=
    DATABASE_URL=""
 
 5. **Run Client**
