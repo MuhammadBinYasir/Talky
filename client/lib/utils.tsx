@@ -1,3 +1,5 @@
+import { Ref, RefObject, useCallback } from "react";
+
 export const formatDateAsDMY = ({ date }: { date: Date }) => {
   const formatted = new Date(date).toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -24,3 +26,13 @@ export const isUserOnline = (
 ) => {
   return !!onlineUsers?.[userId];
 };
+
+export function scrollToBottom(
+  ref: React.RefObject<HTMLDivElement | null>,
+  behavior: ScrollBehavior = "smooth"
+) {
+  ref.current?.scrollIntoView({
+    behavior,
+    block: "end",
+  });
+}

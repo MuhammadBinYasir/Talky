@@ -6,37 +6,37 @@ import { createClient } from "./lib/supabase/Server";
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  // await updateSession(request);
+  await updateSession(request);
 
-  // const supabase = await createClient();
+  const supabase = await createClient();
 
-  // const {
-  //   data: { user },
-  // } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // const pathname = request.nextUrl.pathname;
+  const pathname = request.nextUrl.pathname;
 
-  // const publicRoutes = ["/login", "/register", "/verify-email"];
+  const publicRoutes = ["/login", "/register", "/verify-email"];
 
-  // // console.log(`user: `, user);
+  // console.log(`user: `, user);
 
-  // if (publicRoutes.includes(pathname) && !user) {
-  //   return response;
-  // }
+  if (publicRoutes.includes(pathname) && !user) {
+    return response;
+  }
 
-  // if (!user) {
-  //   const loginUrl = new URL("/login", request.url);
-  //   return NextResponse.redirect(loginUrl);
-  // }
+  if (!user) {
+    const loginUrl = new URL("/login", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
 
-  // if (!user.email_confirmed_at) {
-  //   const verifyEmailUrl = new URL("/verify-email", request.url);
-  //   return NextResponse.redirect(verifyEmailUrl);
-  // }
+  if (!user.email_confirmed_at) {
+    const verifyEmailUrl = new URL("/verify-email", request.url);
+    return NextResponse.redirect(verifyEmailUrl);
+  }
 
-  // if (user && publicRoutes.includes(pathname)) {
-  //   return NextResponse.redirect(new URL("/", request.url));
-  // }
+  if (user && publicRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   return response;
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import SidebarUserCard from "./SidebarUserCard";
 import toast from "react-hot-toast";
 import SidebarUserLoading from "./SidebarUserLoading";
+import NoFriend from "../Errors/NoFriend";
 
 const SidebarUser = () => {
   const [users, setUsers] = useState<
@@ -28,7 +29,7 @@ const SidebarUser = () => {
       if (response?.success) {
         setUsers(response.data);
       } else {
-        toast.error("No friends found");
+        return <NoFriend />;
       }
       setLoading(false);
     };

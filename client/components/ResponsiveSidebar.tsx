@@ -1,5 +1,5 @@
 "use client";
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
 import DashboardLayoutHandler from "./DashboardLayoutHandler";
 import { useMessage } from "@/context/MessageContext";
 import { MessageCircle, SearchIcon, UserPlus2Icon, Users2 } from "lucide-react";
@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation";
 import Topbar from "./Topbar";
 
 const ResponsiveSidebar = ({ children }: { children: React.ReactNode }) => {
-  const { selectedUser } = useMessage();
+  const { selectedUser, viewInfo, setViewInfo } = useMessage();
 
   const pathname = usePathname();
   return (
@@ -43,22 +43,7 @@ const ResponsiveSidebar = ({ children }: { children: React.ReactNode }) => {
         {/* <Suspense fallback={<div>Loading Sidebar...</div>}>
         </Suspense> */}
       </div>
-      <div
-        className={`bg-neutral-100 lg:col-span-3 col-span-4 flex flex-col h-screen overflow-auto 
-        ${
-          selectedUser
-            ? "flex"
-            : `lg:flex ${pathname !== "/" ? "flex" : "hidden"}`
-        }`}
-      >
-        <div className={`p-4 pb-0 bg-white ${pathname !== "/" ? "lg:hidden block" : "hidden"}`}>
-          <Topbar className="border-b-0"/>
-        </div>
-        <DashboardLayoutHandler>{children}</DashboardLayoutHandler>
-      </div>
-      {/* <div className="bg-white col-span-1 p-4 border-l border-l-neutral-200">
-        <UserInfo />
-      </div> */}
+      {children}
     </div>
   );
 };

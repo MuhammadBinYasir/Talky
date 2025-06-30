@@ -2,6 +2,7 @@
 import { useMessage } from "@/context/MessageContext";
 import { usePathname } from "next/navigation";
 import React from "react";
+import SelectChatUser from "./Errors/SelectChatUser";
 
 const DashboardLayoutHandler = ({
   children,
@@ -15,7 +16,7 @@ const DashboardLayoutHandler = ({
   if (pathname != "/" && !selectedUser) return <>{children}</>;
 
   if (pathname === "/" && !selectedUser)
-    return <p>Select a user to start a chat with 😀</p>;
+    return <SelectChatUser />;
 
   return <>{children}</>;
 };

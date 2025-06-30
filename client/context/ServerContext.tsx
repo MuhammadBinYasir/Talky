@@ -3,7 +3,7 @@ import React, { createContext, useEffect, useState, useContext } from "react";
 import { io, Socket } from "socket.io-client";
 import { useUser } from "@/context/UserContext";
 
-type OnlineUsersType = { [userId: string]: string };
+export type OnlineUsersType = { [userId: string]: string };
 
 interface ServerContextType {
   socket: Socket | null;
