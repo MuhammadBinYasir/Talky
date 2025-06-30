@@ -31,7 +31,7 @@ Talky was built to offer a smooth, secure, and modern chatting experience where 
 
 ---
 
-## Getting Started
+## 📦 Getting Started
 
 1. **Clone the Repository**
 
