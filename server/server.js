@@ -34,6 +34,11 @@ io.on("connection", (socket) => {
 
   // Send updated online users list to everyone
   io.emit("onlineUsers", Object.fromEntries(OnlineUsers));
+  
+  // Custom request to get the initial online users list
+  socket.on("getOnlineUsers", () => {
+    socket.emit("onlineUsers", Object.fromEntries(OnlineUsers));
+  });
 
   // Handle disconnection
   socket.on("disconnect", () => {
@@ -49,6 +54,13 @@ io.on("connection", (socket) => {
       io.to(receiverSocketId).emit("ReceiveMessage", data);
     }
     io.to(socket.id).emit("ReceiveMessage", data);
+  });
+
+  socket.on("messageSeen", ({ senderId, receiverId }) => {
+    const senderSocketId = OnlineUsers.get(senderId);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messageSeen", { by: receiverId });
+    }
   });
 });
 

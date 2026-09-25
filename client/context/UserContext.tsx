@@ -1,16 +1,8 @@
 "use client";
 
 import { getCurrentUser, getData } from "@/actions/UserActions";
+import { User } from "@/lib/generated/prisma";
 import React, { createContext, useContext, useEffect, useState } from "react";
-
-type User = {
-  id: string;
-  supabaseId: string;
-  name: string;
-  email: string;
-  image: string;
-  bio: string;
-};
 
 const UserContext = createContext<{ user: User | null }>({
   user: null,
@@ -19,7 +11,7 @@ const UserContext = createContext<{ user: User | null }>({
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
-   useEffect(() => {
+  useEffect(() => {
     const fetch = async () => {
       const supabase = await getData();
       if (!supabase?.userId) return;
@@ -34,10 +26,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <UserContext.Provider value={{user}}>
-        {children}
-    </UserContext.Provider>
-  )
+    <UserContext.Provider value={{ user }}>{children}</UserContext.Provider>
+  );
 };
 
 export const useUser = () => useContext(UserContext);

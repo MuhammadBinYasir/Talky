@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Message from "@/components/Message/Message";
 import ImageMessage from "@/components/Message/ImageMessage";
@@ -11,18 +13,19 @@ import SelectedUserLoading from "../Errors/SelectedUserLoading";
 // import { scrollToBottom } from "@/lib/utils";
 import { ChevronsDown } from "lucide-react";
 import toast from "react-hot-toast";
-import { fetchMessages } from "@/actions/MessageActions";
+import { fetchMessages, markAsSeen } from "@/actions/MessageActions";
 import ChattingAreaLoading from "./ChattingAreaLoading";
 import { scrollToBottom } from "@/lib/utils";
 
 const ChattingArea = ({
-  data: { messages, setMessages, user, setUser },
+  data: { messages, setMessages, user, setUser, tempMsg },
 }: {
   data: {
     messages: MessageType[];
-    setMessages: (prev: any) => void;
+    setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>;
     user: User | null;
-    setUser: (user: User) => void;
+    setUser: (user: User | null) => void;
+    tempMsg: MessageType | null;
   };
 }) => {
   const { selectedUser } = useMessage();
@@ -34,16 +37,58 @@ const ChattingArea = ({
   const [showScrollBtn, setShowScrollBtn] = useState(true);
 
   useEffect(() => {
+    if (!senderUser || !selectedUser || !socket) return;
+
+    const markSeen = async () => {
+      await markAsSeen({
+        senderId: selectedUser,
+        receiverId: senderUser.id,
+      });
+
+      socket.emit("messageSeen", {
+        senderId: selectedUser,
+        receiverId: senderUser.id,
+      });
+    };
+
+    markSeen();
+  }, [selectedUser, messages]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const seenHandler = ({ by }: { by: string }) => {
+      setMessages((prev: MessageType[]) =>
+        prev.map((msg) =>
+          msg.senderId === by ? { ...msg, status: "seen" } : msg
+        )
+      );
+    };
+
+    socket.on("messageSeen", seenHandler);
+
+    return () => {
+      socket.off("messageSeen", seenHandler);
+    };
+  }, [socket, selectedUser]);
+
+  useEffect(() => {
     if (!socket || !selectedUser || !senderUser?.id) return;
 
-    const handleReceiveMessage = (data: any) => {
-      // Only add message if it belongs to current chat
-      if (
-        (data.senderId === selectedUser && data.receiverId === senderUser.id) ||
-        (data.senderId === senderUser.id && data.receiverId === selectedUser)
-      ) {
-        setMessages((prev: any) => [...prev, data]);
-      }
+    const handleReceiveMessage = (data: MessageType) => {
+      // Avoid duplicate messages if already in list
+      setMessages((prev: MessageType[]) => {
+        if (prev.some((m) => m.id === data.id)) return prev;
+
+        // Only add if it belongs to current chat
+        if (
+          (data.senderId === selectedUser && data.receiverId === senderUser.id) ||
+          (data.senderId === senderUser.id && data.receiverId === selectedUser)
+        ) {
+          return [...prev, data];
+        }
+        return prev;
+      });
     };
 
     socket.on("ReceiveMessage", handleReceiveMessage);
@@ -62,9 +107,6 @@ const ChattingArea = ({
     const fetchData = async () => {
       try {
         const userResponse = await getCurrentUser({ userId: selectedUser });
-        if (!userResponse?.success && !userResponse.data)
-          toast.error(userResponse?.message);
-
         if (userResponse.data) setUser(userResponse.data);
 
         const messagesResponse = await fetchMessages({
@@ -73,28 +115,32 @@ const ChattingArea = ({
         });
 
         if (messagesResponse.success) {
-          if (messagesResponse.data.length > 0) {
-            setMessages(messagesResponse.data);
-          }
+          setMessages(messagesResponse.data);
         } else {
-          throw new Error(`${messagesResponse.message}`);
+          toast.error(messagesResponse.message || "Failed to load messages");
         }
       } catch (error) {
-        toast.error(`${error}` || "Failed to load chat");
+        toast.error("Failed to load chat session");
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
+    setAutoScroll(true);
     fetchData();
   }, [selectedUser, senderUser?.id]);
+
+  const prevMessagesLength = useRef(messages.length);
 
   useEffect(() => {
     const container = messagesEndRef.current?.parentElement;
     if (!container) return;
 
     const handleScroll = () => {
+      // Check if user is within 100px of bottom
       const isAtBottom =
-        container.scrollHeight - container.scrollTop === container.clientHeight;
+        container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
       setAutoScroll(isAtBottom);
     };
 
@@ -103,61 +149,90 @@ const ChattingArea = ({
   }, []);
 
   useEffect(() => {
-    if (autoScroll) {
-      if (!messagesEndRef) return;
+    // Scroll instantly on initial load or user change
+    if (messages.length > 0 && !loading && autoScroll) {
+      scrollToBottom(messagesEndRef, "auto");
+    }
+    prevMessagesLength.current = messages.length;
+  }, [selectedUser, loading]);
+
+  useEffect(() => {
+    // Only scroll if actually adding a new message or temp message, or if autoScroll is active
+    const lengthIncreased = messages.length > prevMessagesLength.current;
+
+    if (autoScroll && (lengthIncreased || tempMsg)) {
       scrollToBottom(messagesEndRef, "smooth");
     }
-  }, [messages, autoScroll]);
+
+    prevMessagesLength.current = messages.length;
+  }, [messages.length, tempMsg, autoScroll]);
 
   const groupedMessages = groupMessagesByDate(messages);
 
   if (!user || loading) return <ChattingAreaLoading />;
 
   return (
-    <div className="no-scrollbar w-full overflow-y-auto h-full flex flex-col flex-1 gap-2">
-      {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-        <div className="w-full flex-1 space-y-4 p-4" key={date}>
-          <p className="flex justify-center px-2 py-1 w-max rounded-full bg-neutral-200 font-bold mx-auto text-neutral-500 text-xs">
-            {date}
-          </p>
-          {dateMessages.map((item, index) => {
-            const MessageType =
-              item.senderId === senderUser?.id ? "Send" : "Receive";
+    <div
+      className="w-full overflow-y-auto h-full overflow-x-hidden flex flex-col scroll-smooth custom-scrollbar"
+      style={{ scrollbarGutter: 'stable' }}
+    >
+      <div className="w-full flex-1 flex flex-col gap-2 p-4">
+        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+          <div key={date} className="w-full space-y-4 mb-4">
+            <div className="flex justify-center">
+              <span className="px-3 py-1 bg-neutral-100 rounded-full text-neutral-500 font-semibold text-[10px] uppercase tracking-wider backdrop-blur-sm shadow-sm border border-neutral-200">
+                {date}
+              </span>
+            </div>
+            {dateMessages.map((item) => {
+              const isSender = item.senderId === senderUser?.id;
+              const type = isSender ? "Send" : "Receive";
 
-            return item.type === "text" && item.fileLink === null ? (
-              <Message
-                key={index}
-                time={item.createdAt}
-                type={MessageType}
-                text={item.text}
-                status={item.status}
-              />
-            ) : (
-              item.fileLink && (
+              if (item.type === "text" && !item.fileLink) {
+                return <Message key={item.id} data={item} type={type} />;
+              }
+
+              return (
                 <ImageMessage
-                  key={index}
-                  type={MessageType}
+                  key={item.id}
+                  type={type}
                   text={item.text}
                   status={item.status}
-                  image={item.fileLink}
+                  image={item.fileLink || ""}
                   time={item.createdAt}
-                  onload={() => scrollToBottom(messagesEndRef, "smooth")}
+                  onload={() => autoScroll && scrollToBottom(messagesEndRef, "smooth")}
                 />
-              )
-            );
-          })}
-        </div>
-      ))}
+              );
+            })}
+          </div>
+        ))}
+
+        {tempMsg && (
+          <div className="opacity-70 transition-opacity">
+            {tempMsg.type === "text" ? (
+              <Message data={tempMsg} type="Send" />
+            ) : (
+              <ImageMessage
+                type="Send"
+                text={tempMsg.text}
+                status="unseen"
+                image={tempMsg.fileLink || ""}
+                time={tempMsg.createdAt}
+                onload={() => scrollToBottom(messagesEndRef, "smooth")}
+              />
+            )}
+          </div>
+        )}
+        <div ref={messagesEndRef} className="h-2" />
+      </div>
 
       <div
         onClick={() => scrollToBottom(messagesEndRef, "smooth")}
-        className={`sticky bottom-3 right-3 ml-auto mr-3 aspect-square w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center cursor-pointer shadow ${
-          showScrollBtn ? "scale-100" : "scale-0"
-        }`}
+        className={`fixed bottom-24 right-6 mb-4 z-20 aspect-square w-10 h-10 rounded-full bg-white flex items-center justify-center cursor-pointer shadow-lg border border-neutral-100 transition-all duration-300 hover:bg-neutral-50 ${!autoScroll && messages.length > 5 ? "scale-100 translate-y-0" : "scale-0 translate-y-10"
+          }`}
       >
-        <ChevronsDown className="w-3 h-3 text-sky-600" />
+        <ChevronsDown className="w-5 h-5 text-sky-600" />
       </div>
-      <div ref={messagesEndRef}></div>
     </div>
   );
 };

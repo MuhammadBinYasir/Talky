@@ -23,48 +23,66 @@ const ChatUser = ({
   const { selectedUser, setSelectedUser } = useMessage();
   const { onlineUsers } = useServer();
   if (!user) return <ChatUserLoading />;
+  
   return (
-    <div className="w-full min-h-20 bg-white border-b border-b-neutral-200 flex items-center justify-between gap-3 px-4">
-      <div className="flex items-center gap-3">
-        <div onClick={() => setSelectedUser(null)}>
-          <ChevronLeft className="w-6 h-6 text-neutral-800" />
-        </div>
-        <div className="w-10 h-10 rounded-full relative">
-          <Image
-            width={40}
-            height={40}
-            alt=""
-            src="/assets/profile.png"
-            className="w-full h-full rounded-full"
-          />
-          <div className="absolute w-4 h-4 rounded-full bg-green-400 -right-1 bottom-0 border-4 border-white"></div>
-        </div>
-        <div className="space-y-0.5">
-          <h4 className="text-md text-neutral-800 font-semibold">
-            {user?.name}
-          </h4>
-          <div className="flex gap-2">
-            <div className="text-xs bg-sky-50 rounded-full pl-2 pr-4 py-[2px] w-max text-sky-800 flex items-center gap-2">
-              <p className="w-2 h-2 rounded-full bg-sky-800"></p>{" "}
-              {selectedUser &&
-              onlineUsers &&
-              isUserOnline(selectedUser, onlineUsers)
-                ? "Online"
-                : "Offline"}
-            </div>
-            <p className="text-xs bg-yellow-50 rounded- md:flex hidden pl-2 pr-4 py-[2px] w-max text-yellow-800 items-center gap-2">
-              <Calendar className="text-yellow-800 w-3 h-3" />
-              {formatDateAsDMY({ date: user?.createdAt })}
-            </p>
-            <p className="text-xs bg-purple-50 rounded-full pl-2 md:flex hidden pr-4 py-[2px] w-max text-purple-700 items-center gap-2">
-              <MessageCircle className="text-purple-800 w-3 h-3" />
-              {messages.length} Messages
-            </p>
+    <div className="w-full h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-6 z-10 shadow-sm transition-all duration-300">
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => setSelectedUser(null)}
+          className="lg:hidden p-2 hover:bg-slate-100 rounded-full transition-colors mr-1"
+        >
+          <ChevronLeft className="w-6 h-6 text-slate-600" />
+        </button>
+        
+        <div className="relative group cursor-pointer">
+          <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-slate-100 ring-offset-2 transition-all group-hover:ring-sky-200">
+            <Image
+              width={44}
+              height={44}
+              alt={user.name}
+              src={user.image || "/profile.png"}
+              className="w-full h-full object-cover"
+            />
           </div>
+          {selectedUser && onlineUsers && isUserOnline(selectedUser, onlineUsers) && (
+            <div className="absolute w-3.5 h-3.5 rounded-full bg-emerald-500 right-0 bottom-0 border-2 border-white animate-pulse" />
+          )}
+        </div>
+
+        <div className="flex flex-col">
+          <h4 className="text-[15px] text-slate-900 font-bold leading-tight">
+            {user.name}
+          </h4>
+          <span className={`text-[11px] font-medium uppercase tracking-wider ${
+            selectedUser && onlineUsers && isUserOnline(selectedUser, onlineUsers)
+              ? "text-emerald-600"
+              : "text-slate-400"
+          }`}>
+            {selectedUser && onlineUsers && isUserOnline(selectedUser, onlineUsers)
+              ? "Active Now"
+              : "Offline"}
+          </span>
         </div>
       </div>
-      <div className="cursor-pointer" onClick={() => setViewInfo(!viewInfo)}>
-        <Info className="w-5 h-5" />
+
+      <div className="flex items-center gap-2">
+        <div className="hidden md:flex gap-3 mr-4">
+          <div className="flex flex-col items-end opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Joined</span>
+            <span className="text-[11px] text-slate-600 font-semibold">
+              {formatDateAsDMY({ date: user?.createdAt })}
+            </span>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => setViewInfo(!viewInfo)}
+          className={`p-2.5 rounded-full transition-all duration-300 ${
+            viewInfo ? "bg-sky-50 text-sky-600" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          }`}
+        >
+          <Info className="w-5 h-5" />
+        </button>
       </div>
     </div>
   );

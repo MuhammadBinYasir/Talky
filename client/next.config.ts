@@ -6,12 +6,21 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "nzrfjecjpqqfyeryjvgt.supabase.co"
-      }
-    ]
-  }
+        hostname: "**.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+    ],
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
+  },
 };
 
-module.exports = nextConfig
+module.exports = nextConfig;
 
 // export default nextConfig;

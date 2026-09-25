@@ -11,7 +11,7 @@ export const sendMessage = async ({
   text,
   fileLink,
   type,
-  status,
+  status = "unseen",
 }: {
   senderId: string;
   receiverId: string;
@@ -31,22 +31,9 @@ export const sendMessage = async ({
         fileLink,
       },
     });
-    if (send) {
-      return {
-        success: true,
-        data: send,
-      };
-    } else {
-      return {
-        success: false,
-        data: [],
-      };
-    }
+    return { success: true, data: send };
   } catch (error) {
-    return {
-      success: false,
-      data: [],
-    };
+    return { success: false, message: "Failed to send message", data: null };
   }
 };
 
@@ -61,36 +48,15 @@ export const fetchMessages = async ({
     const fetch = await prisma.message.findMany({
       where: {
         OR: [
-          {
-            senderId,
-            receiverId,
-          },
-          {
-            senderId: receiverId,
-            receiverId: senderId,
-          },
+          { senderId, receiverId },
+          { senderId: receiverId, receiverId: senderId },
         ],
       },
+      orderBy: { createdAt: "asc" },
     });
-
-    if (fetch) {
-      return {
-        success: true,
-        data: fetch,
-      };
-    } else {
-      return {
-        success: false,
-        message: "Error fetching data",
-        data: [],
-      };
-    }
+    return { success: true, data: fetch };
   } catch (error) {
-    return {
-      success: false,
-      message: error,
-      data: [],
-    };
+    return { success: false, message: "Failed to fetch messages", data: [] };
   }
 };
 
@@ -110,67 +76,104 @@ export const fetchImages = async ({
           { senderId: receiverId, receiverId: senderId },
         ],
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
-    const images = messages.map((img) => img.fileLink);
-
-    if (images.length > 0) {
-      return {
-        success: true,
-        data: images,
-      };
-    } else {
-      return {
-        success: false,
-        data: [],
-      };
-    }
+    const images = messages.map((img) => img.fileLink).filter(Boolean);
+    return { success: true, data: images };
   } catch (error) {
-    return {
-      success: false,
-      data: [],
-    };
+    return { success: false, data: [] };
   }
 };
 
-export const handleImageUpload = async ({
-  file,
-  bucket,
-  senderUser,
+export const handleImageUpload = async (formData: FormData) => {
+  try {
+    const file = formData.get("file") as File;
+    const bucket = formData.get("bucket") as string;
+    const senderUser = formData.get("senderUser") as string;
+
+    if (!senderUser || !file || !bucket) {
+      return { success: false, message: "Invalid parameters" };
+    }
+    
+    const ext = file.name.split(".").pop();
+    const filePath = `${senderUser}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) return { success: false, message: uploadError.message };
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return { success: true, message: data.publicUrl };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+};
+
+export const markAsSeen = async ({
+  receiverId,
+  senderId,
 }: {
-  file: File;
-  bucket: string;
-  senderUser: string;
+  receiverId: string;
+  senderId: string;
 }) => {
-  if (!senderUser || !file) {
-    return {
-      success: false,
-      message: "Something went wrong",
-    };
+  try {
+    await prisma.message.updateMany({
+      where: {
+        senderId,
+        receiverId,
+        status: "unseen",
+      },
+      data: { status: "seen" },
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: "Update failed" };
   }
-  const ext = file.name.split(".").pop();
-  const fileName = `${senderUser}-${Date.now()}.${ext}`;
-  const filePath = `${fileName}`;
+};
 
-  const { error: uploadError } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, file, { upsert: true });
-
-  if (uploadError) {
-    return {
-      success: false,
-      message: uploadError.message,
-    };
+export const LastMessage = async ({
+  senderId,
+  receiverId,
+}: {
+  senderId: string;
+  receiverId: string;
+}) => {
+  try {
+    const lastMessage = await prisma.message.findFirst({
+      where: {
+        OR: [
+          { senderId, receiverId },
+          { senderId: receiverId, receiverId: senderId },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return { success: !!lastMessage, data: lastMessage };
+  } catch (error) {
+    return { success: false, data: null };
   }
+};
 
-  const { data } = supabase.storage.from("images").getPublicUrl(filePath);
-  const publicUrl = data.publicUrl;
-
-  return {
-    success: true,
-    message: publicUrl,
-  };
+export const countUnreadMessages = async ({
+  receiverId,
+  senderId,
+}: {
+  receiverId: string;
+  senderId: string;
+}) => {
+  try {
+    const count = await prisma.message.count({
+      where: {
+        senderId,
+        receiverId,
+        status: "unseen",
+      },
+    });
+    return { success: true, count };
+  } catch (error) {
+    return { success: false, count: 0 };
+  }
 };

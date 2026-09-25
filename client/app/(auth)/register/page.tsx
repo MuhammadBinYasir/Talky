@@ -3,11 +3,13 @@ import { createUser, signIn } from "@/actions/UserActions";
 import Input from "@/components/Input";
 import { AtSign, Lock, User } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-const page = () => {
+const Page = () => {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
     email: string;
@@ -19,25 +21,29 @@ const page = () => {
   });
 
   const CreateAcc = async () => {
-    if (
-      formData.email !== "" &&
-      formData.password !== "" &&
-      formData.name !== ""
-    ) {
-      const login = await createUser({
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error("All fields are required!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await createUser({
         email: formData.email,
         password: formData.password,
         name: formData.name
       });
 
-      if (login.success) {
-        toast.success("Account Created Successfully");
-        redirect("/");
+      if (response.success) {
+        toast.success("Account created! Please check your email for verification.");
+        router.push("/login");
       } else {
-        toast.error(`${login.message}`);
+        toast.error(`${response.message}`);
       }
-    } else {
-      toast.error("All fields are required!");
+    } catch (err: any) {
+      toast.error("Something went wrong during registration");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,13 +110,14 @@ const page = () => {
       <div className=" mt-4 w-full justify-end items-end flex">
         <button
           onClick={CreateAcc}
-          className="w-full bg-sky-800 hover:bg-sky-900 text-white py-3 rounded-lg transition duration-300 cursor-pointer"
+          disabled={loading}
+          className="w-full bg-sky-800 hover:bg-sky-900 disabled:bg-sky-950/50 text-white py-3 rounded-lg transition duration-300 cursor-pointer flex items-center justify-center gap-2"
         >
-          Register Now
+          {loading ? "Registering..." : "Register Now"}
         </button>
       </div>
     </div>
   );
 };
 
-export default page;
+export default Page;

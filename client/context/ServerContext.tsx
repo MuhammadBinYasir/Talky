@@ -25,39 +25,32 @@ export const ServerProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user?.id) return;
 
     const userId = String(user.id).trim();
-    const newSocket = io("http://localhost:4000/", {
+    const serverUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || "http://localhost:4000/";
+    const newSocket = io(serverUrl, {
       query: { id: userId },
     });
 
-    // Debugging connection
+    // Event listeners
     newSocket.on("connect", () => {
-      console.log(`🟢 ${userId} connected with socket ID:`, newSocket.id);
+      console.log(`🟢 Online: ${userId}`);
+      newSocket.emit("getOnlineUsers");
+    });
+
+    newSocket.on("onlineUsers", (data: OnlineUsersType) => {
+      setOnlineUsers(data);
     });
 
     newSocket.on("connect_error", (err) => {
-      console.error(`🔴 ${userId} connection failed:`, err.message);
+      console.error(`🔴 Socket Error:`, err.message);
     });
 
     setSocket(newSocket);
 
     return () => {
+      newSocket.off("onlineUsers");
       newSocket.disconnect();
     };
   }, [user?.id]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.emit("getOnlineUsers");
-
-    socket.on("onlineUsers", (data: OnlineUsersType) => {
-      setOnlineUsers(data);
-    });
-
-    return () => {
-      socket.off("onlineUsers");
-    };
-  }, [socket]);
 
   return (
     <ServerContext.Provider value={{ socket, onlineUsers }}>

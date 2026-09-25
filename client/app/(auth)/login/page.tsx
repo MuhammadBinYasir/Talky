@@ -3,11 +3,13 @@ import { signIn } from "@/actions/UserActions";
 import Input from "@/components/Input";
 import { AtSign, Lock, User } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import toast from "react-hot-toast";
 
-const page = () => {
+const Page = () => {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<{
     email: string;
     password: string;
@@ -17,20 +19,28 @@ const page = () => {
   });
 
   const loginNow = async () => {
-    if (formData.email !== "" && formData.password !== "") {
-      const login = await signIn({
+    if (!formData.email || !formData.password) {
+      toast.error("All fields are required!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await signIn({
         email: formData.email,
         password: formData.password,
       });
 
-      if (login.success) {
+      if (response.success) {
         toast.success("Login Success!");
-        redirect("/");
+        router.push("/");
       } else {
-        toast.error(`${login.message}`);
+        toast.error(`${response.message}`);
       }
-    } else {
-      toast.error("All fields are required!");
+    } catch (err: any) {
+      toast.error("An error occurred during login");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,13 +97,14 @@ const page = () => {
       <div className=" mt-4 w-full justify-end items-end flex">
         <button
           onClick={loginNow}
-          className="w-full bg-sky-800 hover:bg-sky-900 text-white py-3 rounded-lg transition duration-300 cursor-pointer"
+          disabled={loading}
+          className="w-full bg-sky-800 hover:bg-sky-900 disabled:bg-sky-950/50 text-white py-3 rounded-lg transition duration-300 cursor-pointer flex items-center justify-center gap-2"
         >
-          Login Now
+          {loading ? "Logging in..." : "Login Now"}
         </button>
       </div>
     </div>
   );
 };
 
-export default page;
+export default Page;
